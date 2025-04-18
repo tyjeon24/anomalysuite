@@ -1,0 +1,20 @@
+[project]
+name = "anomalysuite"
+version = "0.1.0"
+description = "All-in-One anomaly detection models including reconstructor, scorer and classifier."
+readme = "README.md"
+requires-python = ">=3.10"
+authors         = [{ name = "Taeyong Jeon", email = "taeyongjeon24@gmail.com" }]
+license-files = ["LICENSE"]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+]
+dependencies = []
+
+[project.urls]
+repository = "https://github.com/tyjeon24/anomalysuite"
+
+
