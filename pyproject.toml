@@ -17,4 +17,7 @@ dependencies = []
 [project.urls]
 repository = "https://github.com/tyjeon24/anomalysuite"
 
-
+[dependency-groups]
+dev = [
+    "pre-commit>=4.2.0",
+]
