@@ -12,7 +12,10 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.10",
 ]
-dependencies = []
+dependencies = [
+    "lightning>=2.5.1",
+    "torch>=2.6.0",
+]
 
 [project.urls]
 repository = "https://github.com/tyjeon24/anomalysuite"
@@ -20,4 +23,14 @@ repository = "https://github.com/tyjeon24/anomalysuite"
 [dependency-groups]
 dev = [
     "pre-commit>=4.2.0",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu118"
+url = "https://download.pytorch.org/whl/cu118"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu118"}
 ]
