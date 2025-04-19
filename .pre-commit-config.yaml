@@ -1,0 +1,32 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks # formatting
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit # formatting + linting
+    rev: v0.11.6
+    hooks:
+      - id: ruff
+        args:
+          - --extend-select=ANN,D # type hint(ANN), docstring(D)
+          - --fix
+      - id: ruff-format
+
+  - repo: https://github.com/abravalheri/validate-pyproject # pyproject.toml
+    rev: v0.24.1
+    hooks:
+      - id: validate-pyproject
+
+  - repo: https://github.com/rbubley/mirrors-prettier # .pre-commit-config.yaml
+    rev: v3.5.3
+    hooks:
+      - id: prettier
+        types: [yaml]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy # type checking
+    rev: "v1.15.0"
+    hooks:
+      - id: mypy
+        args: [--strict, --ignore-missing-imports]
