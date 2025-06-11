@@ -2,7 +2,7 @@
 
 import math
 from einops import rearrange, repeat
-
+from typing import cast
 import lightning as L
 import torch
 import torch.nn as nn
@@ -54,7 +54,9 @@ class PositionalEncoding(nn.Module):
 class TranAD(L.LightningModule):
     """LightningModule for training TranAD."""
 
-    def __init__(self, sequence_length: int, number_of_features: int) -> None:
+    def __init__(
+        self, sequence_length: int, number_of_features: int, dim_feedforward: int = 16, num_layers: int = 1
+    ) -> None:
         """Initialize model.
 
         TranAD model from https://github.com/imperial-qore/TranAD.
@@ -62,6 +64,8 @@ class TranAD(L.LightningModule):
         Args:
             sequence_length: window size of rolling windowed data.
             number_of_features: number of features, normally number of columns.
+            dim_feedforward: dim_feedforward for encoder and two decoders. Defaults to 16.
+            num_layers: num_layers for encoder and two decoders. Defaults to 1.
 
         """
         super().__init__()
@@ -69,28 +73,28 @@ class TranAD(L.LightningModule):
         self.number_of_features = number_of_features
         self.sequence_length = sequence_length
         self.doubled_dimension = 2 * number_of_features
-        self.pos_encoder = PositionalEncoding(self.doubled_dimension, 0.1, self.sequence_length)
+        self.pos_encoder = PositionalEncoding(self.doubled_dimension, 0.1, self.sequence_length * 2)
         encoder_layers = nn.TransformerEncoderLayer(
             d_model=self.doubled_dimension,
             nhead=number_of_features,
-            dim_feedforward=16,
+            dim_feedforward=dim_feedforward,
             dropout=0.1,
         )
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layers, 1)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layers, num_layers=num_layers)
         decoder_layers1 = nn.TransformerDecoderLayer(
             d_model=self.doubled_dimension,
             nhead=number_of_features,
-            dim_feedforward=16,
+            dim_feedforward=dim_feedforward,
             dropout=0.1,
         )
-        self.transformer_decoder_without_context = nn.TransformerDecoder(decoder_layers1, 1)
+        self.transformer_decoder_without_context = nn.TransformerDecoder(decoder_layers1, num_layers=num_layers)
         decoder_layers2 = nn.TransformerDecoderLayer(
             d_model=self.doubled_dimension,
             nhead=number_of_features,
-            dim_feedforward=16,
+            dim_feedforward=dim_feedforward,
             dropout=0.1,
         )
-        self.transformer_decoder_with_context = nn.TransformerDecoder(decoder_layers2, 1)
+        self.transformer_decoder_with_context = nn.TransformerDecoder(decoder_layers2, num_layers=num_layers)
         self.fcn = nn.Sequential(
             nn.Linear(self.doubled_dimension, number_of_features),
             nn.Sigmoid(),
@@ -175,8 +179,54 @@ class TranAD(L.LightningModule):
         loss_without_context = (1 / epoch) * nn.functional.mse_loss(xhat_0, x, reduction="mean")
         loss_with_context = (1 - 1 / epoch) * nn.functional.mse_loss(xhat_1, x, reduction="mean")
         loss = loss_without_context + loss_with_context
-        self.log("train_loss", loss, on_step=True, prog_bar=True, logger=True)
+        self.log("train_loss", loss, logger=True)
         return loss
+
+    def validation_step(self, batch: torch.Tensor) -> torch.Tensor:
+        """Validate dataloader.
+
+        Args:
+            batch: X input
+
+        Returns:
+            loss for backpropagation.
+
+        """
+        x = batch if len(batch) == 1 else batch[0]
+        _, xhat_1 = self(x)
+        loss = nn.functional.mse_loss(xhat_1, x, reduction="mean")
+        self.log("val_loss", loss, prog_bar=True)
+        return loss
+
+    def test_step(self, batch: torch.Tensor) -> torch.Tensor:
+        """Test dataloader.
+
+        Args:
+            batch: X input
+
+        Returns:
+            loss for backpropagation.
+
+        """
+        x = batch if len(batch) == 1 else batch[0]
+        _, xhat_1 = self(x)
+        loss = nn.functional.mse_loss(xhat_1, x, reduction="mean")
+        self.log("test_loss", loss, prog_bar=True, logger=True)
+        return loss
+
+    def predict_step(self, batch: torch.Tensor) -> torch.Tensor:
+        """Test dataloader.
+
+        Args:
+            batch: X input
+
+        Returns:
+            loss for backpropagation.
+
+        """
+        x = batch if len(batch) == 1 else batch[0]
+        xhat_0, xhat_1 = self(x)
+        return cast(torch.Tensor, xhat_1)
 
     def configure_optimizers(
         self,
