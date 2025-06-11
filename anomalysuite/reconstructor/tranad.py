@@ -1,14 +1,13 @@
 """TranAD and PyTorch Lightning wrapper."""
 
 import math
+from einops import rearrange, repeat
 
 import lightning as L
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import StepLR
-
-N_WINDOWS = 10
 
 
 class PositionalEncoding(nn.Module):
@@ -66,6 +65,7 @@ class TranAD(L.LightningModule):
 
         """
         super().__init__()
+        self.example_input_array = torch.Tensor(64, sequence_length, number_of_features)
         self.number_of_features = number_of_features
         self.sequence_length = sequence_length
         self.doubled_dimension = 2 * number_of_features
@@ -96,43 +96,67 @@ class TranAD(L.LightningModule):
             nn.Sigmoid(),
         )
 
-    def forward(self, src: torch.Tensor, tgt: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, src: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Forward pass.
 
         Args:
             src: Source.
-            tgt: Target.
 
         Returns:
             Prediction values.
 
         """
+        assert src.ndim == 3 and src.shape[1] == self.sequence_length and src.shape[2] == self.number_of_features, (
+            "src must be shaped (batch_size, sequence_length, number_of_features)"
+        )
+
+        src = rearrange(
+            src,
+            "batch_size sequence_length number_of_features -> sequence_length batch_size number_of_features",
+        )
+        tgt = rearrange(src[-1], "batch_size number_of_features -> 1 batch_size number_of_features")
+        tgt_doubled = repeat(
+            tgt,
+            "1 batch_size number_of_features -> 1 batch_size (number_of_features repeat)",
+            repeat=2,
+        )
+
         # Phase 1 - Without anomaly scores
         c = torch.zeros_like(src)
-        x1 = self.fcn(self.transformer_decoder_without_context(*self.encode(src, c, tgt)))
+        memory = self.encode(src, c)
+        x1 = self.fcn(self.transformer_decoder_without_context(memory, tgt_doubled))
+
         # Phase 2 - With anomaly scores
         c = (x1 - src) ** 2
-        x2 = self.fcn(self.transformer_decoder_with_context(*self.encode(src, c, tgt)))
+        memory = self.encode(src, c)
+        x2 = self.fcn(self.transformer_decoder_with_context(memory, tgt_doubled))
+
+        x1 = rearrange(
+            x1,
+            "sequence_length batch_size number_of_features -> batch_size sequence_length number_of_features",
+        )
+        x2 = rearrange(
+            x2,
+            "sequence_length batch_size number_of_features -> batch_size sequence_length number_of_features",
+        )
         return x1, x2
 
-    def encode(self, src: torch.Tensor, c: torch.Tensor, tgt: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def encode(self, src: torch.Tensor, c: torch.Tensor) -> torch.Tensor:
         """Encode tensor.
 
         Args:
             src: Source.
             c: Context.
-            tgt: Target.
 
         Returns:
-            tuple: Encoded tensor tuple.
+            memory for TransformerDecoder input.
 
         """
-        src = torch.cat((src, c), dim=2)
-        src = src * math.sqrt(self.number_of_features)
-        src = self.pos_encoder(src)
-        memory = self.transformer_encoder(src)
-        tgt = tgt.repeat(1, 1, 2)
-        return tgt, memory
+        src_with_context = torch.cat((src, c), dim=2)
+        src_pre_scaled = src_with_context * math.sqrt(self.number_of_features)
+        src_encoded = self.pos_encoder(src_pre_scaled)
+        memory: torch.Tensor = self.transformer_encoder(src_encoded)
+        return memory
 
     def training_step(self, batch: torch.Tensor) -> torch.Tensor:
         """Train using dataloader or batch data.
@@ -144,24 +168,14 @@ class TranAD(L.LightningModule):
             loss for backpropagation.
 
         """
-        loss = torch.tensor([])
-        d, _ = batch
-        assert d.shape == (d.shape[0], self.sequence_length, self.number_of_features), (
-            f"입력 텐서 {d.shape}가 예상한 텐서 ({d.shape[0]},{self.sequence_length},{self.number_of_features})과 다릅니다."
-        )
+        x = batch if len(batch) == 1 else batch[0]
+        xhat_0, xhat_1 = self(x)
+
         epoch = self.current_epoch + 1
-        local_bs = d.shape[0]
-        window = d.permute(1, 0, 2)
-        elem = window[-1, :, :].view(1, local_bs, self.number_of_features)
-        z = self(window, elem)
-
-        loss = (1 / epoch) * nn.functional.mse_loss(z[0], elem, reduction="mean") + (
-            1 - 1 / epoch
-        ) * nn.functional.mse_loss(z[1], elem, reduction="mean")
-        z = z[1]
-
-        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-
+        loss_without_context = (1 / epoch) * nn.functional.mse_loss(xhat_0, x, reduction="mean")
+        loss_with_context = (1 - 1 / epoch) * nn.functional.mse_loss(xhat_1, x, reduction="mean")
+        loss = loss_without_context + loss_with_context
+        self.log("train_loss", loss, on_step=True, prog_bar=True, logger=True)
         return loss
 
     def configure_optimizers(

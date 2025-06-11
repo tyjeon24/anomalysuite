@@ -25,8 +25,10 @@ repos:
       - id: prettier
         types: [yaml]
 
-  - repo: https://github.com/pre-commit/mirrors-mypy # type checking
-    rev: "v1.15.0"
+  - repo: local
     hooks:
       - id: mypy
-        args: [--strict, --ignore-missing-imports, --explicit-package-bases]
+        name: "Mypy for static type checking"
+        entry: uv run mypy --strict
+        types: [python]
+        language: system
