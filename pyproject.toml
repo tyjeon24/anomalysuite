@@ -13,8 +13,14 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
 ]
 dependencies = [
+    "einops>=0.8.1",
+    "ipykernel>=6.29.5",
     "lightning>=2.5.1",
+    "matplotlib>=3.10.3",
+    "pandas>=2.2.3",
     "torch>=2.6.0",
+    "torchsqlite>=0.1.1",
+    "wandb>=0.19.9",
 ]
 
 [project.urls]
@@ -22,7 +28,11 @@ repository = "https://github.com/tyjeon24/anomalysuite"
 
 [dependency-groups]
 dev = [
+    "mypy>=1.15.0",
     "pre-commit>=4.2.0",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.1.1",
+    "ruff>=0.11.5",
 ]
 
 [[tool.uv.index]]
