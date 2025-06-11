@@ -43,8 +43,8 @@ class RandomDataGenerator:
         self.features = features
         self.minmax_scale = minmax_scale
         self.seed = seed
-        self.random_number_generator = None
-        self.anomaly_spans = []
+        self.random_number_generator = np.random.default_rng(seed=self.seed)
+        self.anomaly_spans: list[tuple[int, int]] = []
 
     def get_data(self) -> pd.DataFrame:
         """Generate data.
@@ -55,16 +55,13 @@ class RandomDataGenerator:
             pandas dataframe.
 
         """
-        self.random_number_generator = np.random.default_rng(seed=self.seed)
-
         data = {}
         for i in range(self.features):
-            x_max = self.random_number_generator.integers(10, 20 + self.features)
-            x = np.linspace(0, x_max * np.pi, self.length)
+            x = np.arange(0, self.length)
             phase = self.random_number_generator.uniform(0, 2 * np.pi)
             amplitude = self.random_number_generator.uniform(0, 10)
-            frequency = self.random_number_generator.uniform(1, 3)
-            y = amplitude * np.sin(frequency * x - phase)
+            frequency = self.random_number_generator.uniform(0.02, 0.05)
+            y = amplitude * np.sin(2 * np.pi * frequency * x - phase)
 
             start = self.random_number_generator.integers(int(self.length * 0.8), self.length - self.anomaly_length)
             end = start + self.anomaly_length
