@@ -18,6 +18,7 @@ dependencies = [
     "lightning>=2.5.1",
     "matplotlib>=3.10.3",
     "pandas>=2.2.3",
+    "structlog>=25.4.0",
     "torch>=2.6.0",
     "torchsqlite>=0.1.1",
     "wandb>=0.19.9",
@@ -44,3 +45,8 @@ explicit = true
 torch = [
   { index = "pytorch-cu118"}
 ]
+
+[tool.pytest.ini_options]
+addopts = "--maxfail=1"
+log_cli = true
+log_cli_level = "DEBUG"
