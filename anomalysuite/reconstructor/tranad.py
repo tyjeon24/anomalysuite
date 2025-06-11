@@ -226,7 +226,7 @@ class TranAD(L.LightningModule):
         """
         x = batch if len(batch) == 1 else batch[0]
         xhat_0, xhat_1 = self(x)
-        return cast(torch.Tensor, xhat_1)
+        return cast(torch.Tensor, xhat_1)  # cast to handle mypy [no-any-return]
 
     def configure_optimizers(
         self,
