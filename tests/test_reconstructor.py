@@ -15,7 +15,9 @@ def test_tranad(hyperparameters: dict[str, int], dataloader: DataLoader[TensorDa
         dataloader: dataloader from fixture.
 
     """
-    model = TranAD(n_feats=hyperparameters["number_of_features"])
+    model = TranAD(
+        sequence_length=hyperparameters["sequence_length"], number_of_features=hyperparameters["number_of_features"]
+    )
     trainer = L.Trainer(fast_dev_run=True)
     trainer.fit(model, dataloader)
     assert trainer.state.finished
