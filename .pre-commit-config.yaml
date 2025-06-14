@@ -8,12 +8,12 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit # formatting + linting
     rev: v0.11.6
     hooks:
+      - id: ruff-format
       - id: ruff
         args:
-          - --extend-select=ANN,D # type hint(ANN), docstring(D)
+          - --extend-select=ANN,D,I # type hint(ANN), docstring(D), isort(I)
           - --fix
           - --extend-ignore=ANN401 # Any type is ok
-      - id: ruff-format
 
   - repo: https://github.com/abravalheri/validate-pyproject # pyproject.toml
     rev: v0.24.1
