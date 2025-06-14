@@ -5,6 +5,7 @@ import logging.handlers
 import os
 from datetime import datetime
 from typing import Any
+from typing import TextIO, MutableMapping
 
 import structlog
 
@@ -14,7 +15,7 @@ LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
 
 
-def set_stream_handler() -> logging.StreamHandler:
+def set_stream_handler() -> logging.StreamHandler[TextIO]:
     """Set a handler to check logs on the stream."""
     stream_handler = logging.StreamHandler()
     stream_handler.setLevel(LOGGING_LEVEL)
@@ -27,12 +28,12 @@ def set_file_handler() -> logging.handlers.TimedRotatingFileHandler:
 
     file_handler = logging.handlers.TimedRotatingFileHandler(
         filename=log_filename,
-        when="midnight",  # 자정마다 파일 분할
-        interval=1,  # 1일마다 분할
+        when="midnight",
+        interval=1,  # Every day
         encoding="utf-8",
         utc=False,
     )
-    file_handler.setLevel(LOGGING_LEVEL)  # 파일에 기록할 최소 로그 레벨
+    file_handler.setLevel(LOGGING_LEVEL)
     return file_handler
 
 
@@ -46,24 +47,28 @@ logging.basicConfig(
 )
 
 
-def add_timestamp_timezone(logger: logging.Logger, method_name: Any, event_dict: dict[str, Any]) -> dict[str, Any]:
+def add_timestamp_timezone(
+    logger: logging.Logger, method_name: Any, event_dict: MutableMapping[str, Any]
+) -> MutableMapping[str, Any]:
     """Set a timezone-aware timestamp."""
     event_dict["timestamp"] = datetime.now().astimezone().isoformat()
     return event_dict
 
 
-def sort_keys(logger: logging.Logger, method_name: Any, event_dict: dict[str, Any]) -> dict[str, Any]:
+def sort_keys(
+    logger: logging.Logger, method_name: Any, event_dict: MutableMapping[str, Any]
+) -> MutableMapping[str, Any]:
     """Sort keys in dictionary type logger."""
     event_dict = dict(sorted(event_dict.items()))
     return event_dict
 
 
 structlog.configure(
-    logger_factory=structlog.stdlib.LoggerFactory(),  # (필수) logging.basicConfig 연동
-    cache_logger_on_first_use=True,  # (필수) 성능 최적화, 한 번 생성한 인스턴스 재활용
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    cache_logger_on_first_use=True,
     processors=[
-        add_timestamp_timezone,  # (필수) timezone 시간 : {"timestamp": "2025-01-01T12:00:00.000000+09:00"}
-        structlog.stdlib.add_log_level,  # 로그 레벨 : {"level": "error"}
+        add_timestamp_timezone,
+        structlog.stdlib.add_log_level,
         structlog.processors.CallsiteParameterAdder(
             [
                 structlog.processors.CallsiteParameter.FILENAME,  # {"filename": "app.py"}
@@ -71,10 +76,10 @@ structlog.configure(
                 structlog.processors.CallsiteParameter.LINENO,  # {"lineno": 11}
             ]
         ),
-        structlog.processors.dict_tracebacks,  # 에러 트레이스백 json 형태로 작성
-        structlog.processors.format_exc_info,  # (필수) logger.error(message, exc_info=True) 설정 시 오류에 대한 exception 항목 추가. { "exception": "Traceback (most recent call..."}
-        sort_keys,  # 정렬
-        structlog.processors.JSONRenderer(ensure_ascii=False),  # (필수) JSON 문자열로 변환
+        structlog.processors.dict_tracebacks,
+        structlog.processors.format_exc_info,
+        sort_keys,
+        structlog.processors.JSONRenderer(ensure_ascii=False),
     ],
 )
 
