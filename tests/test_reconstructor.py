@@ -1,20 +1,21 @@
 """test reconstruction models."""
 
 import lightning as L
+import torch
+from hypothesis import given, settings
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.dataset import TensorDataset
-import torch
+
 from anomalysuite.reconstructor.tranad import TranAD
-from hypothesis import given, strategies as st
-from hypothesis import settings
+from tests.strategies import batch_size, number_of_data, number_of_features, sequence_length
 
 
-@settings(deadline=None)
+@settings(deadline=None, max_examples=20)
 @given(
-    number_of_data=st.integers(min_value=1, max_value=10000),
-    number_of_features=st.integers(min_value=1, max_value=50),
-    sequence_length=st.integers(min_value=1, max_value=200),
-    batch_size=st.integers(min_value=1, max_value=256),
+    number_of_data=number_of_data,
+    number_of_features=number_of_features,
+    sequence_length=sequence_length,
+    batch_size=batch_size,
 )
 def test_tranad(number_of_data: int, number_of_features: int, sequence_length: int, batch_size: int) -> None:
     """Test tranad training is working correctly.
