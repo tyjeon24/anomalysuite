@@ -12,7 +12,7 @@ repos:
         args:
           - --extend-select=ANN,D # type hint(ANN), docstring(D)
           - --fix
-          - --exclude=ANN401 # Any type is ok
+          - --extend-ignore=ANN401 # Any type is ok
       - id: ruff-format
 
   - repo: https://github.com/abravalheri/validate-pyproject # pyproject.toml
