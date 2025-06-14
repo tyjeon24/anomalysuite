@@ -11,7 +11,7 @@ repos:
       - id: ruff-format
       - id: ruff
         args:
-          - --extend-select=ANN,D # type hint(ANN), docstring(D)
+          - --extend-select=ANN,D,I # type hint(ANN), docstring(D), isort(I)
           - --fix
           - --extend-ignore=ANN401 # Any type is ok
 
