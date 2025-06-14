@@ -29,6 +29,7 @@ repository = "https://github.com/tyjeon24/anomalysuite"
 
 [dependency-groups]
 dev = [
+  "hypothesis>=6.135.9",
   "mypy>=1.15.0",
   "pandas-stubs>=2.2.3.250527",
   "pre-commit>=4.2.0",
